@@ -1,7 +1,7 @@
 <template>
     <div class="box">
         <div class="text">
-            Zaraz nastąpi połączenie z konsultantem.
+            Trwa połączenie...
         </div>
     </div>
 </template>

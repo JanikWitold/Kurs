@@ -3,24 +3,30 @@ const httpServer = express();
 const dialer = require('dialer').Dialer;
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const { Server } = require('socket.io');
 
 const config = {
     url: 'https://uni-call.fcc-online.pl',
-    login: 'focus19',
-    password: 'ep9poqhdxkd'
+    login: '',
+    password: ''
 };
 
-dialer.configure(null); //(config);
+dialer.configure(config); //(null);
+
+
+
 
 // Serwer nasłuchuje na porcie 3000
-httpServer.listen(3000, function () {
-    console.log('Example app listening on port 3000!')
-    // adres url możemy wygenerować za pomocą komendy
-    // gp url 3000
-})
+const serverInstance = httpServer.listen(3000,
+    function () {
+        console.log('Example app listening on port 3000!')
+        // adres url możemy wygenerować za pomocą komendy
+        // gp url 3000
+    })
+
+const io = new Server(serverInstance)
 
 // Definiowanie odpowiedzi na req get
-
 httpServer.get('/call/:number1/:number2', (req, res) => {
     const number1 = req.params.number1;
     const number2 = req.params.number2;
@@ -38,21 +44,27 @@ httpServer.use(function (req, res, next) {
 
 httpServer.post('/call/', async (req, res) => {
     const number1 = req.body.number;
-    const number2 = '555555555' // tutaj dajemy swój numer
+    const number2 = '555555555' // tutaj dejemy swój numer
     console.log('Dzwonie', number1, number2)
     bridge = await dialer.call(number1, number2);
+    let oldStatus = null
     let interval = setInterval(async () => {
-        let status = await bridge.getStatus();
-        console.log(status)
-        if (
-            status === "ANSWERED" ||
-            status === "FAILED" ||
-            status === "BUSY" ||
-            status === "NO ANSWER"
-        ) {
-            console.log("stop");
-            clearInterval(interval);
+        let currentStatus = await bridge.getStatus();
+        if (currentStatus !== oldStatus) {
+            oldStatus = currentStatus
+            io.emit('status', currentStatus)
         }
-    }, 2000);
-    res.json({ success: true });
+        if (
+            currentStatus === "ANSWERED" ||
+            currentStatus === "FAILED" ||
+            currentStatus === "BUSY" ||
+            currentStatus === "NO ANSWER"
+        ) {
+            console.log('stop')
+            clearInterval(interval)
+        }
+    }, 1000)
+    res.json({
+        id: '123', status: bridge.STATUSES.NEW
+    });
 })
